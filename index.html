@@ -218,7 +218,6 @@
     [items[idx], items[target]] = [items[target], items[idx]];
     save(); renderItems();
   }
-
   function openMoveModal(idx) {
     movingItemIndex = idx; const listEl = document.getElementById('moveList'); listEl.innerHTML = '';
     Object.keys(data).forEach(folder => {
@@ -268,37 +267,20 @@
     const a = document.createElement('a');
     const d = new Date();
     const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-    a.href = url;
-    a.download = `prompt_backup_${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast('JSONファイルを保存しました');
+    a.href = url; a.download = `prompt_backup_${dateStr}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url); showToast('JSONファイルを保存しました');
   }
 
   function handleFileSelect(event) {
-    const file = event.target.files;
-    if (!file) return;
+    const file = event.target.files; if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
-      processImportJson(e.target.result);
-      event.target.value = '';
-    };
+    reader.onload = (e) => { processImportJson(e.target.result); event.target.value = ''; };
     reader.readAsText(file);
   }
 
-  function exportData() {
-    const json = JSON.stringify(data, null, 2);
-    document.getElementById('backupText').value = json;
-    copyText(json, 'JSONテキストをコピーしました！');
-  }
-
-  function importFromText() {
-    const raw = document.getElementById('backupText').value.trim();
-    if (!raw) { showToast('データを貼り付けてください'); return; }
-    processImportJson(raw);
-  }
+  function exportData() { const json = JSON.stringify(data, null, 2); document.getElementById('backupText').value = json; copyText(json, 'JSONテキストをコピーしました！'); }
+  function importFromText() { const raw = document.getElementById('backupText').value.trim(); if (!raw) { showToast('データを貼り付けてください'); return; } processImportJson(raw); }
 
   function processImportJson(raw) {
     try {
@@ -331,6 +313,10 @@
   function copySingle(text) { copyText(text, `「${text}」をコピーしました`); }
   function copyAll() { const text = document.getElementById('output').value; if (!text) { showToast('単語が選択されていません'); return; } copyText(text, 'まとめてコピーしました！'); }
   function clearSelection() { selectedPrompts = []; document.getElementById('output').value = ''; renderItems(); }
-function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m])); }
-function escapeJs(s) { return s.replace(/\/g, '\\').replace(/'/g, "\'"); }
-renderTabs(); renderItems();
+  function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+  function escapeJs(s) { return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+  renderTabs(); renderItems();
+</script>
+</body>
+</html>
