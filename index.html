@@ -5,29 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>プロンプトビルダー</title>
   <style>
-    :root { --bg: #f4f6f9; --card: #ffffff; --primary: #3b82f6; --primary-light: #eff6ff; --text: #1e293b; --sub: #64748b; --border: #e2e8f0; --danger: #ef4444; }
+    :root { --bg: #f4f6f9; --card: #ffffff; --primary: #3b82f6; --primary-light: #eff6ff; --text: #1e293b; --sub: #64748b; --border: #e2e8f0; --danger: #ef4444; --success: #10b981; }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif; }
-    body { background: var(--bg); color: var(--text); padding-bottom: 190px; }
+    body { background: var(--bg); color: var(--text); padding-bottom: 195px; }
     header { background: var(--card); position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); padding: 12px 12px 0; }
     .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     h1 { font-size: 16px; font-weight: bold; }
-    .edit-toggle { font-size: 12px; padding: 5px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--sub); }
-    .edit-toggle.active { background: var(--danger); color: white; border-color: var(--danger); }
-    .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+    .header-btns { display: flex; gap: 6px; }
+    .top-btn { font-size: 12px; padding: 5px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--sub); font-weight: bold; }
+    .top-btn.active { background: var(--danger); color: white; border-color: var(--danger); }
+    .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; align-items: center; }
     .tabs::-webkit-scrollbar { display: none; }
-    .tab { padding: 8px 14px; border-radius: 20px; background: var(--bg); color: var(--sub); font-size: 14px; font-weight: bold; white-space: nowrap; border: none; }
-    .tab.active { background: var(--primary); color: white; }
+    .tab-wrap { display: flex; align-items: center; background: var(--bg); border-radius: 20px; padding: 2px; }
+    .tab-wrap.active { background: var(--primary); }
+    .tab { padding: 6px 12px; border-radius: 18px; background: transparent; color: var(--sub); font-size: 13px; font-weight: bold; white-space: nowrap; border: none; }
+    .tab-wrap.active .tab { color: white; }
+    .tab-move { display: none; background: rgba(255,255,255,0.2); border: none; color: inherit; font-size: 10px; padding: 4px 6px; border-radius: 10px; }
+    body.edit-mode .tab-move { display: inline-block; }
+    body.edit-mode .tab-wrap:not(.active) .tab-move { color: var(--sub); background: rgba(0,0,0,0.05); }
+    .add-tab-btn { padding: 6px 12px; border-radius: 20px; border: 1px dashed var(--sub); background: transparent; color: var(--sub); font-size: 13px; font-weight: bold; white-space: nowrap; }
     main { padding: 14px; }
+    .folder-bar { display: none; justify-content: space-between; align-items: center; background: #fff1f2; border: 1px solid #fecdd3; padding: 8px 12px; border-radius: 10px; margin-bottom: 12px; font-size: 12px; }
+    body.edit-mode .folder-bar { display: flex; }
+    .folder-del-btn { background: var(--danger); color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
     .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .item-card { background: var(--card); border: 2px solid var(--border); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; transition: 0.1s; cursor: pointer; }
     .item-card.selected { border-color: var(--primary); background: var(--primary-light); }
     .item-label { font-size: 14px; font-weight: bold; margin-bottom: 2px; }
     .item-en { font-size: 11px; color: var(--sub); word-break: break-all; margin-bottom: 8px; }
-    .item-actions { display: flex; justify-content: flex-end; gap: 6px; }
-    .mini-btn { font-size: 11px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
-    .del-btn { display: none; background: var(--danger); color: white; border: none; }
-    body.edit-mode .del-btn { display: inline-block; }
+    .item-actions { display: flex; justify-content: flex-end; gap: 4px; flex-wrap: wrap; }
+    .mini-btn { font-size: 11px; padding: 4px 7px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
+    .edit-only { display: none; }
+    body.edit-mode .edit-only { display: inline-block; }
     body.edit-mode .single-copy-btn { display: none; }
+    .del-btn { background: var(--danger); color: white; border: none; }
     .add-box { margin-top: 20px; background: var(--card); padding: 12px; border-radius: 12px; border: 1px solid var(--border); }
     .add-box h2 { font-size: 13px; color: var(--sub); margin-bottom: 8px; }
     .add-row { display: flex; gap: 6px; margin-bottom: 8px; }
@@ -38,7 +49,19 @@
     .bar-btns { display: flex; gap: 8px; }
     .clear-btn { padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font-weight: bold; font-size: 14px; color: var(--sub); }
     .copy-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: var(--primary); color: white; font-weight: bold; font-size: 15px; }
-    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(30,41,59,0.9); color: white; padding: 8px 16px; border-radius: 20px; font-size: 13px; opacity: 0; pointer-events: none; transition: 0.2s; z-index: 50; }
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; align-items: center; justify-content: center; padding: 16px; }
+    .modal-bg.show { display: flex; }
+    .modal { background: var(--card); width: 100%; max-width: 400px; border-radius: 16px; padding: 16px; }
+    .modal h3 { font-size: 16px; margin-bottom: 8px; }
+    .modal p { font-size: 12px; color: var(--sub); margin-bottom: 10px; line-height: 1.4; }
+    .modal textarea { width: 100%; height: 110px; border: 1px solid var(--border); border-radius: 8px; padding: 8px; font-size: 12px; margin-bottom: 10px; }
+    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+    .m-btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); font-size: 13px; font-weight: bold; }
+    .m-btn.primary { background: var(--primary); color: white; border: none; }
+    .m-btn.success { background: var(--success); color: white; border: none; }
+    .move-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .move-choice { padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); text-align: left; font-weight: bold; font-size: 14px; }
+    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(30,41,59,0.92); color: white; padding: 8px 16px; border-radius: 20px; font-size: 13px; opacity: 0; pointer-events: none; transition: 0.2s; z-index: 60; white-space: nowrap; }
     .toast.show { opacity: 1; }
   </style>
 </head>
@@ -46,11 +69,19 @@
 <header>
   <div class="header-top">
     <h1>プロンプトビルダー</h1>
-    <button class="edit-toggle" id="editToggle" onclick="toggleEditMode()">削除モード</button>
+    <div class="header-btns">
+      <button class="top-btn" onclick="openBackupModal()">バックアップ</button>
+      <button class="top-btn" id="editToggle" onclick="toggleEditMode()">編集モード</button>
+    </div>
   </div>
   <div class="tabs" id="tabs"></div>
 </header>
+
 <main>
+  <div class="folder-bar">
+    <span id="folderManageLabel">「表情」フォルダの操作</span>
+    <button class="folder-del-btn" onclick="deleteCurrentFolder()">このフォルダを削除</button>
+  </div>
   <div class="grid" id="itemGrid"></div>
   <div class="add-box">
     <h2 id="addTitle">「表情」フォルダに単語を追加</h2>
@@ -61,6 +92,7 @@
     <button class="add-btn" onclick="addItem()">＋ 追加する</button>
   </div>
 </main>
+
 <div class="bottom-bar">
   <textarea class="output-box" id="output" readonly placeholder="上の単語カードをタップして選択..."></textarea>
   <div class="bar-btns">
@@ -68,166 +100,195 @@
     <button class="copy-btn" onclick="copyAll()">まとめてコピー</button>
   </div>
 </div>
+
+<div class="modal-bg" id="backupModal">
+  <div class="modal">
+    <h3>バックアップ（書き出し / 読み込み）</h3>
+    <p>【書き出し】現在の全データをコピーしてメモ帳等に保存できます。<br>【読み込み】貼り付けたデータを追加します（同じ日本語がすでにある場合は自動でスキップします）。</p>
+    <textarea id="backupText" placeholder="ここにバックアップデータを貼り付け..."></textarea>
+    <div class="modal-btns">
+      <button class="m-btn" onclick="closeModal('backupModal')">閉じる</button>
+      <button class="m-btn success" onclick="exportData()">データを書き出してコピー</button>
+      <button class="m-btn primary" onclick="importData()">追加インポート</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="moveModal">
+  <div class="modal">
+    <h3>移動先のフォルダを選択</h3>
+    <div class="move-list" id="moveList"></div>
+    <div class="modal-btns">
+      <button class="m-btn" onclick="closeModal('moveModal')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">コピーしました！</div>
 <script>
-  const DEFAULT_DATA = {
-    "表情": [
-      { id: 1, label: "笑顔", en: "smile" }
-    ],
-    "ポーズ": [],
-    "服装": [],
-    "背景": []
-  };
-
+  const DEFAULT_DATA = { "表情": [{ id: 1, label: "笑顔", en: "smile" }], "ポーズ": [], "服装": [], "背景": [] };
   let data = JSON.parse(JSON.stringify(DEFAULT_DATA));
-  try {
-    const saved = localStorage.getItem('promptBuilderData');
-    if (saved) data = JSON.parse(saved);
-  } catch (e) {}
-
-  let currentFolder = Object.keys(data)[0];
+  try { const saved = localStorage.getItem('promptBuilderData'); if (saved) data = JSON.parse(saved); } catch (e) {}
+  let currentFolder = Object.keys(data)[0] || "";
   let selectedPrompts = [];
   let isEditMode = false;
+  let movingItemIndex = null;
 
-  function save() {
-    try {
-      localStorage.setItem('promptBuilderData', JSON.stringify(data));
-    } catch (e) {}
-  }
-
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 1500);
-  }
+  function save() { try { localStorage.setItem('promptBuilderData', JSON.stringify(data)); } catch (e) {} }
+  function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); }
 
   function renderTabs() {
     const tabsEl = document.getElementById('tabs');
     tabsEl.innerHTML = '';
-    Object.keys(data).forEach(folder => {
-      const btn = document.createElement('button');
-      btn.className = 'tab' + (folder === currentFolder ? ' active' : '');
-      btn.textContent = folder;
-      btn.onclick = () => {
-        currentFolder = folder;
-        renderTabs();
-        renderItems();
-      };
-      tabsEl.appendChild(btn);
+    const folders = Object.keys(data);
+    if (!folders.includes(currentFolder) && folders.length > 0) currentFolder = folders[0];
+    folders.forEach((folder, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'tab-wrap' + (folder === currentFolder ? ' active' : '');
+      if (idx > 0) {
+        const l = document.createElement('button'); l.className = 'tab-move'; l.textContent = '◀';
+        l.onclick = () => moveFolder(idx, -1); wrap.appendChild(l);
+      }
+      const btn = document.createElement('button'); btn.className = 'tab'; btn.textContent = folder;
+      btn.onclick = () => { currentFolder = folder; renderTabs(); renderItems(); };
+      wrap.appendChild(btn);
+      if (idx < folders.length - 1) {
+        const r = document.createElement('button'); r.className = 'tab-move'; r.textContent = '▶';
+        r.onclick = () => moveFolder(idx, 1); wrap.appendChild(r);
+      }
+      tabsEl.appendChild(wrap);
     });
+    const addTab = document.createElement('button'); addTab.className = 'add-tab-btn'; addTab.textContent = '＋ フォルダ';
+    addTab.onclick = addNewFolder; tabsEl.appendChild(addTab);
     document.getElementById('addTitle').textContent = `「${currentFolder}」フォルダに単語を追加`;
+    document.getElementById('folderManageLabel').textContent = `「${currentFolder}」フォルダ`;
+  }
+
+  function addNewFolder() {
+    const name = prompt('新しいフォルダ名を入力してください（例: 画風、髪型）');
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if (data[trimmed]) { showToast('同じ名前のフォルダがすでにあります'); return; }
+    data[trimmed] = []; currentFolder = trimmed; save(); renderTabs(); renderItems();
+    showToast(`「${trimmed}」を作成しました`);
+  }
+
+  function moveFolder(idx, dir) {
+    const keys = Object.keys(data); const targetIdx = idx + dir;
+    if (targetIdx < 0 || targetIdx >= keys.length) return;
+    [keys[idx], keys[targetIdx]] = [keys[targetIdx], keys[idx]];
+    const newData = {}; keys.forEach(k => newData[k] = data[k]);
+    data = newData; save(); renderTabs();
+  }
+
+  function deleteCurrentFolder() {
+    if (Object.keys(data).length <= 1) { showToast('最後の1つのフォルダは削除できません'); return; }
+    if (!confirm(`「${currentFolder}」フォルダと中の単語をすべて削除しますか？`)) return;
+    delete data[currentFolder]; currentFolder = Object.keys(data)[0];
+    save(); renderTabs(); renderItems(); showToast('フォルダを削除しました');
   }
 
   function renderItems() {
-    const gridEl = document.getElementById('itemGrid');
-    gridEl.innerHTML = '';
-    (data[currentFolder] || []).forEach(item => {
+    const gridEl = document.getElementById('itemGrid'); gridEl.innerHTML = '';
+    const items = data[currentFolder] || [];
+    items.forEach((item, idx) => {
       const card = document.createElement('div');
       card.className = 'item-card' + (selectedPrompts.includes(item.en) ? ' selected' : '');
-      card.onclick = (e) => {
-        if (e.target.tagName !== 'BUTTON' && !isEditMode) toggleSelect(item.en);
-      };
-      card.innerHTML = `
-        <div>
-          <div class="item-label">${escapeHtml(item.label)}</div>
-          <div class="item-en">${escapeHtml(item.en)}</div>
-        </div>
-        <div class="item-actions">
-          <button class="mini-btn single-copy-btn" onclick="copySingle('${escapeJs(item.en)}')">コピー</button>
-          <button class="mini-btn del-btn" onclick="deleteItem(${item.id})">削除</button>
-        </div>`;
+      card.onclick = (e) => { if (e.target.tagName !== 'BUTTON' && !isEditMode) toggleSelect(item.en); };
+      const prevBtn = idx > 0 ? `<button class="mini-btn edit-only" onclick="moveItem(${idx}, -1)">◀</button>` : '';
+      const nextBtn = idx < items.length - 1 ? `<button class="mini-btn edit-only" onclick="moveItem(${idx}, 1)">▶</button>` : '';
+      card.innerHTML = `<div><div class="item-label">${escapeHtml(item.label)}</div><div class="item-en">${escapeHtml(item.en)}</div></div><div class="item-actions"><button class="mini-btn single-copy-btn" onclick="copySingle('${escapeJs(item.en)}')">コピー</button>${prevBtn}${nextBtn}<button class="mini-btn edit-only" onclick="openMoveModal(${idx})">移動</button><button class="mini-btn edit-only del-btn" onclick="deleteItem(${idx})">削除</button></div>`;
       gridEl.appendChild(card);
     });
   }
 
+  function moveItem(idx, dir) {
+    const items = data[currentFolder]; const target = idx + dir;
+    if (target < 0 || target >= items.length) return;
+    [items[idx], items[target]] = [items[target], items[idx]];
+    save(); renderItems();
+  }
+
+  function openMoveModal(idx) {
+    movingItemIndex = idx; const listEl = document.getElementById('moveList'); listEl.innerHTML = '';
+    Object.keys(data).forEach(folder => {
+      if (folder === currentFolder) return;
+      const btn = document.createElement('button'); btn.className = 'move-choice'; btn.textContent = `📁 ${folder}`;
+      btn.onclick = () => executeMoveItem(folder); listEl.appendChild(btn);
+    });
+    if (listEl.children.length === 0) { showToast('移動先の他フォルダがありません'); return; }
+    document.getElementById('moveModal').classList.add('show');
+  }
+
+  function executeMoveItem(targetFolder) {
+    if (movingItemIndex === null) return;
+    const [item] = data[currentFolder].splice(movingItemIndex, 1);
+    data[targetFolder].push(item); save(); closeModal('moveModal'); renderItems();
+    showToast(`「${targetFolder}」へ移動しました`);
+  }
+
   function toggleSelect(en) {
     const idx = selectedPrompts.indexOf(en);
-    if (idx > -1) selectedPrompts.splice(idx, 1);
-    else selectedPrompts.push(en);
-    document.getElementById('output').value = selectedPrompts.join(', ');
-    renderItems();
+    if (idx > -1) selectedPrompts.splice(idx, 1); else selectedPrompts.push(en);
+    document.getElementById('output').value = selectedPrompts.join(', '); renderItems();
   }
 
   function addItem() {
     const label = document.getElementById('labelInput').value.trim();
     const en = document.getElementById('enInput').value.trim();
-    if (!label || !en) {
-      showToast('日本語と英語の両方を入力してください');
-      return;
-    }
-    data[currentFolder].push({ id: Date.now(), label, en });
-    save();
-    document.getElementById('labelInput').value = '';
-    document.getElementById('enInput').value = '';
-    renderItems();
-    showToast('追加しました');
+    if (!label || !en) { showToast('日本語と英語の両方を入力してください'); return; }
+    data[currentFolder].push({ id: Date.now(), label, en }); save();
+    document.getElementById('labelInput').value = ''; document.getElementById('enInput').value = '';
+    renderItems(); showToast('追加しました');
   }
 
-  function deleteItem(id) {
-    data[currentFolder] = data[currentFolder].filter(i => i.id !== id);
-    save();
-    renderItems();
-    showToast('削除しました');
-  }
-
+  function deleteItem(idx) { data[currentFolder].splice(idx, 1); save(); renderItems(); showToast('削除しました'); }
   function toggleEditMode() {
-    isEditMode = !isEditMode;
-    document.body.classList.toggle('edit-mode', isEditMode);
-    const btn = document.getElementById('editToggle');
-    btn.classList.toggle('active', isEditMode);
-    btn.textContent = isEditMode ? '完了' : '削除モード';
+    isEditMode = !isEditMode; document.body.classList.toggle('edit-mode', isEditMode);
+    const btn = document.getElementById('editToggle'); btn.classList.toggle('active', isEditMode);
+    btn.textContent = isEditMode ? '完了' : '編集モード';
+  }
+  function openBackupModal() { document.getElementById('backupText').value = ''; document.getElementById('backupModal').classList.add('show'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+  function exportData() { const json = JSON.stringify(data); document.getElementById('backupText').value = json; copyText(json, 'バックアップデータをコピーしました！'); }
+
+  function importData() {
+    const raw = document.getElementById('backupText').value.trim();
+    if (!raw) { showToast('データを貼り付けてください'); return; }
+    try {
+      const imported = JSON.parse(raw);
+      if (typeof imported !== 'object' || Array.isArray(imported)) throw new Error();
+      let addedCount = 0; let skippedCount = 0;
+      const existingLabels = new Set();
+      Object.values(data).forEach(items => { if (Array.isArray(items)) items.forEach(item => existingLabels.add(item.label.trim())); });
+      Object.keys(imported).forEach(folder => {
+        if (!Array.isArray(imported[folder])) return;
+        if (!data[folder]) data[folder] = [];
+        imported[folder].forEach(item => {
+          if (!item.label || !item.en) return;
+          const cleanLabel = item.label.trim();
+          if (existingLabels.has(cleanLabel)) { skippedCount++; }
+          else { data[folder].push({ id: Date.now() + Math.random(), label: cleanLabel, en: item.en.trim() }); existingLabels.add(cleanLabel); addedCount++; }
+        });
+      });
+      save(); renderTabs(); renderItems(); closeModal('backupModal');
+      showToast(`${addedCount}件追加しました（重複${skippedCount}件スキップ）`);
+    } catch (e) { showToast('データの形式が正しくありません'); }
   }
 
-  function fallbackCopy(text) {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-  }
-
+  function fallbackCopy(text) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
   function copyText(text, msg) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => showToast(msg)).catch(() => {
-        fallbackCopy(text);
-        showToast(msg);
-      });
-    } else {
-      fallbackCopy(text);
-      showToast(msg);
-    }
+      navigator.clipboard.writeText(text).then(() => showToast(msg)).catch(() => { fallbackCopy(text); showToast(msg); });
+    } else { fallbackCopy(text); showToast(msg); }
   }
+  function copySingle(text) { copyText(text, `「${text}」をコピーしました`); }
+  function copyAll() { const text = document.getElementById('output').value; if (!text) { showToast('単語が選択されていません'); return; } copyText(text, 'まとめてコピーしました！'); }
+  function clearSelection() { selectedPrompts = []; document.getElementById('output').value = ''; renderItems(); }
+  function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+  function escapeJs(s) { return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
-  function copySingle(text) {
-    copyText(text, `「${text}」をコピーしました`);
-  }
-
-  function copyAll() {
-    const text = document.getElementById('output').value;
-    if (!text) {
-      showToast('単語が選択されていません');
-      return;
-    }
-    copyText(text, 'まとめてコピーしました！');
-  }
-
-  function clearSelection() {
-    selectedPrompts = [];
-    document.getElementById('output').value = '';
-    renderItems();
-  }
-
-  function escapeHtml(s) {
-    return s.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-  }
-  function escapeJs(s) {
-    return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-  }
-
-  renderTabs();
-  renderItems();
+  renderTabs(); renderItems();
 </script>
 </body>
 </html>
