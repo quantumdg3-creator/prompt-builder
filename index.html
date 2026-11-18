@@ -273,7 +273,7 @@
   }
 
   function handleFileSelect(event) {
-    const file = event.target.files; if (!file) return;
+    const file = event.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => { processImportJson(e.target.result); event.target.value = ''; };
     reader.readAsText(file);
