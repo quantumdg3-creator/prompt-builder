@@ -51,12 +51,14 @@
     .copy-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: var(--primary); color: white; font-weight: bold; font-size: 15px; }
     .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; align-items: center; justify-content: center; padding: 16px; }
     .modal-bg.show { display: flex; }
-    .modal { background: var(--card); width: 100%; max-width: 400px; border-radius: 16px; padding: 16px; }
-    .modal h3 { font-size: 16px; margin-bottom: 8px; }
-    .modal p { font-size: 12px; color: var(--sub); margin-bottom: 10px; line-height: 1.4; }
-    .modal textarea { width: 100%; height: 110px; border: 1px solid var(--border); border-radius: 8px; padding: 8px; font-size: 12px; margin-bottom: 10px; }
+    .modal { background: var(--card); width: 100%; max-width: 400px; border-radius: 16px; padding: 16px; max-height: 85vh; overflow-y: auto; }
+    .modal h3 { font-size: 16px; margin-bottom: 6px; }
+    .modal h4 { font-size: 13px; color: var(--text); margin: 12px 0 6px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .modal p { font-size: 12px; color: var(--sub); margin-bottom: 8px; line-height: 1.4; }
+    .modal textarea { width: 100%; height: 80px; border: 1px solid var(--border); border-radius: 8px; padding: 8px; font-size: 12px; margin-bottom: 8px; }
+    .file-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
     .modal-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-    .m-btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); font-size: 13px; font-weight: bold; }
+    .m-btn { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); font-size: 13px; font-weight: bold; text-align: center; }
     .m-btn.primary { background: var(--primary); color: white; border: none; }
     .m-btn.success { background: var(--success); color: white; border: none; }
     .move-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
@@ -103,13 +105,22 @@
 
 <div class="modal-bg" id="backupModal">
   <div class="modal">
-    <h3>バックアップ（書き出し / 読み込み）</h3>
-    <p>【書き出し】現在の全データをコピーしてメモ帳等に保存できます。<br>【読み込み】貼り付けたデータを追加します（同じ日本語がすでにある場合は自動でスキップします）。</p>
-    <textarea id="backupText" placeholder="ここにバックアップデータを貼り付け..."></textarea>
+    <h3>JSONバックアップ管理</h3>
+    <p>読み込み時は既存データを残したまま追加し、同じ日本語ラベルがあれば自動でスキップします。</p>
+    
+    <h4>📁 JSONファイルで管理（おすすめ）</h4>
+    <div class="file-btns">
+      <button class="m-btn success" onclick="downloadJsonFile()">📥 JSON保存</button>
+      <button class="m-btn primary" onclick="document.getElementById('jsonFileInput').click()">📤 JSON読込</button>
+    </div>
+    <input type="file" id="jsonFileInput" accept=".json,application/json" style="display:none" onchange="handleFileSelect(event)">
+
+    <h4>📋 テキストで管理（コピペ用）</h4>
+    <textarea id="backupText" placeholder="JSONテキストをここに貼り付け..."></textarea>
     <div class="modal-btns">
+      <button class="m-btn" onclick="exportData()">テキストコピー</button>
+      <button class="m-btn primary" onclick="importFromText()">テキスト追加</button>
       <button class="m-btn" onclick="closeModal('backupModal')">閉じる</button>
-      <button class="m-btn success" onclick="exportData()">データを書き出してコピー</button>
-      <button class="m-btn primary" onclick="importData()">追加インポート</button>
     </div>
   </div>
 </div>
@@ -129,19 +140,18 @@
   const DEFAULT_DATA = { "表情": [{ id: 1, label: "笑顔", en: "smile" }], "ポーズ": [], "服装": [], "背景": [] };
   let data = JSON.parse(JSON.stringify(DEFAULT_DATA));
   try { const saved = localStorage.getItem('promptBuilderData'); if (saved) data = JSON.parse(saved); } catch (e) {}
-  let currentFolder = Object.keys(data)[0] || "";
+  let currentFolder = Object.keys(data) || "";
   let selectedPrompts = [];
   let isEditMode = false;
   let movingItemIndex = null;
 
   function save() { try { localStorage.setItem('promptBuilderData', JSON.stringify(data)); } catch (e) {} }
-  function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); }
+  function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
 
   function renderTabs() {
-    const tabsEl = document.getElementById('tabs');
-    tabsEl.innerHTML = '';
+    const tabsEl = document.getElementById('tabs'); tabsEl.innerHTML = '';
     const folders = Object.keys(data);
-    if (!folders.includes(currentFolder) && folders.length > 0) currentFolder = folders[0];
+    if (!folders.includes(currentFolder) && folders.length > 0) currentFolder = folders;
     folders.forEach((folder, idx) => {
       const wrap = document.createElement('div');
       wrap.className = 'tab-wrap' + (folder === currentFolder ? ' active' : '');
@@ -184,7 +194,7 @@
   function deleteCurrentFolder() {
     if (Object.keys(data).length <= 1) { showToast('最後の1つのフォルダは削除できません'); return; }
     if (!confirm(`「${currentFolder}」フォルダと中の単語をすべて削除しますか？`)) return;
-    delete data[currentFolder]; currentFolder = Object.keys(data)[0];
+    delete data[currentFolder]; currentFolder = Object.keys(data);
     save(); renderTabs(); renderItems(); showToast('フォルダを削除しました');
   }
 
@@ -250,11 +260,47 @@
   }
   function openBackupModal() { document.getElementById('backupText').value = ''; document.getElementById('backupModal').classList.add('show'); }
   function closeModal(id) { document.getElementById(id).classList.remove('show'); }
-  function exportData() { const json = JSON.stringify(data); document.getElementById('backupText').value = json; copyText(json, 'バックアップデータをコピーしました！'); }
 
-  function importData() {
+  function downloadJsonFile() {
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    a.href = url;
+    a.download = `prompt_backup_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('JSONファイルを保存しました');
+  }
+
+  function handleFileSelect(event) {
+    const file = event.target.files;
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      processImportJson(e.target.result);
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  function exportData() {
+    const json = JSON.stringify(data, null, 2);
+    document.getElementById('backupText').value = json;
+    copyText(json, 'JSONテキストをコピーしました！');
+  }
+
+  function importFromText() {
     const raw = document.getElementById('backupText').value.trim();
     if (!raw) { showToast('データを貼り付けてください'); return; }
+    processImportJson(raw);
+  }
+
+  function processImportJson(raw) {
     try {
       const imported = JSON.parse(raw);
       if (typeof imported !== 'object' || Array.isArray(imported)) throw new Error();
@@ -272,8 +318,8 @@
         });
       });
       save(); renderTabs(); renderItems(); closeModal('backupModal');
-      showToast(`${addedCount}件追加しました（重複${skippedCount}件スキップ）`);
-    } catch (e) { showToast('データの形式が正しくありません'); }
+      showToast(`${addedCount}件追加（重複${skippedCount}件スキップ）`);
+    } catch (e) { showToast('JSONの形式が正しくありません'); }
   }
 
   function fallbackCopy(text) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
@@ -285,10 +331,6 @@
   function copySingle(text) { copyText(text, `「${text}」をコピーしました`); }
   function copyAll() { const text = document.getElementById('output').value; if (!text) { showToast('単語が選択されていません'); return; } copyText(text, 'まとめてコピーしました！'); }
   function clearSelection() { selectedPrompts = []; document.getElementById('output').value = ''; renderItems(); }
-  function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
-  function escapeJs(s) { return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
-
-  renderTabs(); renderItems();
-</script>
-</body>
-</html>
+function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m])); }
+function escapeJs(s) { return s.replace(/\/g, '\\').replace(/'/g, "\'"); }
+renderTabs(); renderItems();
